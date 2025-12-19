@@ -1,5 +1,6 @@
 package com.example.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,4 +15,7 @@ public interface FlightRepository extends JpaRepository<Flight, Integer> {
 	List<Flight> findByDestination(String destination);
 
 	List<Flight> findByOriginAndDestination(String origin, String destination);
+
+	List<Flight> findByOriginAndDestinationAndDepartureTimeBetween(String origin, String destination,
+			LocalDateTime start, LocalDateTime end);
 }
