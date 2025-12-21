@@ -28,7 +28,7 @@ public class JwtUtils {
 	@Value("${bezkoder.app.jwtExpirationMs}")
 	private int jwtExpirationMs;
 
-	@Value("${bezkoder.app.jwtCookieName:bezkoder}")
+	@Value("${bezkoder.app.jwtCookieName:asrithaCookie}")
 	private String jwtCookieName;
 
 	private Key key() {
@@ -46,14 +46,14 @@ public class JwtUtils {
 				.setExpiration(new Date((new Date()).getTime() + jwtExpirationMs)).signWith(key()).compact();
 	}
 
-	public String generateTokenWithRoles(String username, List<String> roles) {
-		return Jwts.builder().setSubject(username).claim("roles", roles).setIssuedAt(new Date())
+	public String generateTokenWithRoles(String username, List<String> roles,boolean forcePwdChange) {
+		return Jwts.builder().setSubject(username).claim("forcePwdChange", forcePwdChange).claim("roles", roles).setIssuedAt(new Date())
 				.setExpiration(new Date((new Date()).getTime() + jwtExpirationMs)).signWith(key()).compact();
 	}
 
-	public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
+	public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal,boolean forcePwdChange) {
 		List<String> roles = userPrincipal.getAuthorities().stream().map(a -> a.getAuthority()).toList();
-		String jwt = generateTokenWithRoles(userPrincipal.getUsername(), roles);
+		String jwt = generateTokenWithRoles(userPrincipal.getUsername(), roles, forcePwdChange);
 		long maxAgeSec = jwtExpirationMs / 1000L;
 		return ResponseCookie.from(jwtCookieName, jwt).path("/").maxAge(maxAgeSec).httpOnly(true).build();
 	}

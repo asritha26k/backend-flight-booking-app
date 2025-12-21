@@ -43,7 +43,7 @@ public class WebSecurityConfig {
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/auth/signin", "/api/auth/signup", "/api/auth/signout").permitAll()
-						.requestMatchers("/api/auth/me").authenticated().anyRequest().authenticated())
+						.requestMatchers("/api/auth/me","/api/auth/change-password").authenticated().anyRequest().authenticated())
 				.addFilterBefore(authJwtFilter, UsernamePasswordAuthenticationFilter.class)
 				.httpBasic(AbstractHttpConfigurer::disable);
 
