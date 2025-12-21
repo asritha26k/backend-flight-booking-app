@@ -36,7 +36,7 @@ public class User {
 	private String email;
     public boolean isPasswordExpired() {
         return passwordLastChangedAt != null &&
-                passwordLastChangedAt.isBefore(LocalDateTime.now().minusMinutes(1));
+                passwordLastChangedAt.isBefore(LocalDateTime.now().minusMinutes(5));
 //        minusDays(90)
     }
     public LocalDateTime getPasswordLastChangedAt() {
