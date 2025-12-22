@@ -51,9 +51,8 @@ public class GatewaySecurityConfig {
                         .hasAnyRole("ADMIN", "USER")
                         .pathMatchers("/flight-service/flight/getFlightById/**")
                         .hasAnyRole("ADMIN", "USER")
-                        .pathMatchers("/flight-service/flight/getByOriginDestinationDateTime")
-                        .hasAnyRole("ADMIN", "USER")
-
+                                .pathMatchers("/flight-service/flight/getByOriginDestinationDateTime")
+                                .permitAll()
                         // SEAT MANAGEMENT (internal but same roles)
                         .pathMatchers("/flight-service/flight/flights/*/reserve")
                         .hasAnyRole("ADMIN", "USER")
@@ -80,7 +79,8 @@ public class GatewaySecurityConfig {
                         // other services
                         .anyExchange().authenticated()
                 )
-                .addFilterAt(jwtFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+//                .addFilterAt(jwtFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                .addFilterAfter(jwtFilter, SecurityWebFiltersOrder.CORS)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .build();

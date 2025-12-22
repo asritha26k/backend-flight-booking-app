@@ -25,6 +25,9 @@ public class JwtAuthFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        if (exchange.getRequest().getMethod().name().equals("OPTIONS")) {
+            return chain.filter(exchange);
+        }
 
         String path = exchange.getRequest().getURI().getPath();
         System.out.println("GATEWAY FILTER HIT: " + exchange.getRequest().getMethod() + " " + path);
@@ -32,7 +35,7 @@ public class JwtAuthFilter implements WebFilter {
         // public auth endpoints
         if (path.equals("/auth-service/api/auth/signin")
                 || path.equals("/auth-service/api/auth/signup")
-                || path.equals("/auth-service/api/auth/signout")) {
+                || path.equals("/auth-service/api/auth/signout")  || path.equals("/flight-service/flight/getByOriginDestinationDateTime")) {
             return chain.filter(exchange);
         }
 
