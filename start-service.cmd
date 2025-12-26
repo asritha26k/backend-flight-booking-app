@@ -26,8 +26,8 @@ start "" /b java -jar passenger-service\target\passenger-service-0.0.1-SNAPSHOT.
 timeout /t 10 > nul
 
 REM echo Starting Ticket Service...
-start cmd /k java -jar ticket-service\target\ticket-service-0.0.1-SNAPSHOT.jar
+start "" /b java -jar ticket-service\target\ticket-service-0.0.1-SNAPSHOT.jar
 REM timeout /t 10 > nul
 
 REM echo Starting Email Service...
-start cmd /k java -jar email-service\target\email-service-0.0.1-SNAPSHOT.jar
+start "" /b java -jar email-service\target\email-service-0.0.1-SNAPSHOT.jar

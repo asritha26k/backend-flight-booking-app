@@ -77,6 +77,7 @@ public class GatewaySecurityConfig {
                         .hasAnyRole("ADMIN", "USER")
 
                         // other services
+                        //any exchange means all other requests not matched above
                         .anyExchange().authenticated()
                 )
 //                .addFilterAt(jwtFilter, SecurityWebFiltersOrder.AUTHENTICATION)
@@ -94,7 +95,8 @@ public class GatewaySecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
-
+        // You can set other configurations as needed
+        //url based cors config source means we can define cors for different url patterns
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
 

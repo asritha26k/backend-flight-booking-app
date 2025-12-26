@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import java.util.List;
 @Data
 @Builder
 @NoArgsConstructor
@@ -13,11 +13,11 @@ import lombok.NoArgsConstructor;
 
 public class BookTicketRequest {
 	@NotNull
-	private Integer flightId;
+	private int flightId;
 	@NotNull
-	private Integer passengerId;
+	private Integer [] passengerIds;
 //	@NotNull
 //	private String seatNo;
 	@NotNull
-	private Integer numberOfSeats;
+	private int numberOfSeats;
 }

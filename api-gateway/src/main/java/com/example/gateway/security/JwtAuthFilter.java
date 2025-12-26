@@ -33,9 +33,12 @@ public class JwtAuthFilter implements WebFilter {
         System.out.println("GATEWAY FILTER HIT: " + exchange.getRequest().getMethod() + " " + path);
 
         // public auth endpoints
-        if (path.equals("/auth-service/api/auth/signin")
-                || path.equals("/auth-service/api/auth/signup")
-                || path.equals("/auth-service/api/auth/signout")  || path.equals("/flight-service/flight/getByOriginDestinationDateTime")) {
+        if (
+                path.equals("/auth-service/api/auth/signin") ||
+                        path.equals("/auth-service/api/auth/signup") ||
+                        path.equals("/auth-service/api/auth/signout") ||
+                        path.equals("/flight-service/flight/getByOriginDestinationDateTime")
+        ) {
             return chain.filter(exchange);
         }
 
@@ -75,7 +78,7 @@ public class JwtAuthFilter implements WebFilter {
             return chain.filter(exchange)
                     .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
         }
-
+        //means can go to next filter this filter is done
         return chain.filter(exchange);
     }
 }
