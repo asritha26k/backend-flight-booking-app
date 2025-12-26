@@ -4,17 +4,21 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.example.model.Ticket;
 
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Integer> {
-	Optional<Ticket> findByPnr(String pnr);
 
-	List<Ticket> findAllByPassengerId(int passengerId);
+    Optional<Ticket> findByPnr(String pnr);
 
-//	boolean existsByFlightIdAndSeatNo(Integer flightId, String seatNo);
-
-	boolean existsByFlightIdAndPassengerId(Integer flightId, Integer passengerId);
+    @Query("""
+        SELECT t FROM Ticket t
+        WHERE :pid MEMBER OF t.passengerIds
+    """)
+    List<Ticket> findAllByPassengerId(@Param("pid") Integer passengerId);
 }
+

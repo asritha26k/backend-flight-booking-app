@@ -1,12 +1,12 @@
 package com.example.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -29,173 +29,191 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 @Service
 public class TicketService {
 
-	private TicketRepository ticketRepository;
+    private static final Logger logger = LoggerFactory.getLogger(TicketService.class);
 
-	private PassengerInterface passengerInterface;
-	private FlightInterface flightInterface;
-	private KafkaTemplate<String, TicketBookedEvent> kafkaTemplate;
-	public TicketService(@Autowired TicketRepository ticketRepository,
-            @Autowired PassengerInterface passengerInterface,
-            @Autowired FlightInterface flightInterface,
-            @Autowired KafkaTemplate<String, TicketBookedEvent> kafkaTemplate) {
-this.ticketRepository = ticketRepository;
-this.passengerInterface = passengerInterface;
-this.flightInterface = flightInterface;
-this.kafkaTemplate = kafkaTemplate;
-}
+    private final TicketRepository ticketRepository;
+    private final PassengerInterface passengerInterface;
+    private final FlightInterface flightInterface;
+    private final KafkaTemplate<String, TicketBookedEvent> kafkaTemplate;
 
-	private static final Logger logger = LoggerFactory.getLogger(TicketService.class);
+    public TicketService(
+            TicketRepository ticketRepository,
+            PassengerInterface passengerInterface,
+            FlightInterface flightInterface,
+            KafkaTemplate<String, TicketBookedEvent> kafkaTemplate) {
 
-	@Transactional
-	public ResponseEntity<String> deleteTicketById(int ticketId) {
+        this.ticketRepository = ticketRepository;
+        this.passengerInterface = passengerInterface;
+        this.flightInterface = flightInterface;
+        this.kafkaTemplate = kafkaTemplate;
+    }
 
-	    Ticket ticket = ticketRepository.findById(ticketId)
-	            .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
+    @Transactional
+    public ResponseEntity<String> bookTicketService(BookTicketRequest req) {
 
-	    if (!ticket.isBooked()) {
-	        return ResponseEntity.ok("Ticket already cancelled");
-	    }
+        if (req.getPassengerIds() == null || req.getPassengerIds().isEmpty()) {
+            throw new IllegalArgumentException("Passenger list cannot be empty");
+        }
 
-	    ResponseEntity<FlightResponse> response =
-	            flightInterface.getByID(ticket.getFlightId());
+        int seats = req.getPassengerIds().size();
+        flightInterface.reserveSeats(req.getFlightId(), seats);
 
-	    FlightResponse flight = response.getBody();
+        String pnr = UUID.randomUUID().toString();
 
-	    if (flight == null || flight.getDepartureTime() == null) {
-	        return ResponseEntity
-	                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-	                .body("Unable to fetch flight details");
-	    }
+        Ticket ticket = Ticket.builder()
+                .pnr(pnr)
+                .flightId(req.getFlightId())
+                .passengerIds(req.getPassengerIds())
+                .numberOfSeats(seats)
+                .booked(true)
+                .build();
 
-	    LocalDateTime departureTime = flight.getDepartureTime();
-	    LocalDateTime now = LocalDateTime.now();
+        Ticket saved = ticketRepository.save(ticket);
+        sendKafkaNotifications(saved);
 
-	    if (now.plusHours(24).isAfter(departureTime)) {
-	        return ResponseEntity
-	                .status(HttpStatus.BAD_REQUEST)
-	                .body("Ticket cannot be cancelled within 24 hours of departure");
-	    }
+        return ResponseEntity.ok(saved.getPnr());
+    }
 
-	    flightInterface.releaseSeats(
-	            ticket.getFlightId(),
-	            ticket.getNumberOfSeats()
-	    );
+    @Transactional
+    public ResponseEntity<String> deleteTicketById(int ticketId) {
 
-	    ticket.setBooked(false);
-	    ticketRepository.save(ticket);
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
 
-	    return ResponseEntity.ok("Ticket cancelled successfully");
-	}
+        if (!ticket.isBooked()) {
+            return ResponseEntity.ok("Ticket already cancelled");
+        }
 
+        FlightResponse flight = flightInterface.getByID(ticket.getFlightId()).getBody();
+        if (flight == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Flight service unavailable");
+        }
 
+        if (LocalDateTime.now().plusHours(24).isAfter(flight.getDepartureTime())) {
+            return ResponseEntity.badRequest()
+                    .body("Ticket cannot be cancelled within 24 hours of departure");
+        }
 
-	@Transactional
-	public ResponseEntity<String> bookTicketService(BookTicketRequest req) {
+        flightInterface.releaseSeats(ticket.getFlightId(), ticket.getNumberOfSeats());
+        ticket.setBooked(false);
+        ticketRepository.save(ticket);
 
-		// 1. Reduce seats in Flight Service FIRST
-		if (req.getNumberOfSeats() <= 0) {
-		    throw new IllegalArgumentException("Number of seats must be positive");
-		}
+        return ResponseEntity.ok("Ticket cancelled successfully");
+    }
 
-		flightInterface.reserveSeats(req.getFlightId(), req.getNumberOfSeats());
+    @CircuitBreaker(name = "flightService", fallbackMethod = "getByPnrFallback")
+    public ResponseEntity<TicketResponse> getByPnrService(String pnr) {
 
-		String pnr = UUID.randomUUID().toString().substring(0, 8);
+        Ticket ticket = ticketRepository.findByPnr(pnr)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
 
-		Ticket ticket = Ticket.builder().pnr(pnr).passengerId(req.getPassengerId()).flightId(req.getFlightId())
-				.numberOfSeats(req.getNumberOfSeats()).booked(true).build();
+        FlightResponse flight = flightInterface.getByID(ticket.getFlightId()).getBody();
+        if (flight == null) {
+            throw new ResourceNotFoundException("Flight details unavailable");
+        }
 
-		ticketRepository.save(ticket);
+        List<PassengerDetailsResponse> passengers = fetchPassengers(ticket.getPassengerIds());
 
-		PassengerDetailsResponse passenger =
-		        passengerInterface.getPassengerDetails(req.getPassengerId()).getBody();
+        return ResponseEntity.ok(buildResponse(ticket, flight, passengers));
+    }
 
-		TicketBookedEvent event = new TicketBookedEvent(
-		        passenger.getEmail(),
-		        pnr,
-		        req.getFlightId(),
-		        req.getNumberOfSeats()
-		);
+    public ResponseEntity<TicketResponse> getByPnrFallback(String pnr, Throwable ex) {
+        logger.warn("getByPnr fallback | pnr={} | {}", pnr, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+    }
 
-		try {
-		    kafkaTemplate.send("ticket-confirmation", event);
-		} catch (Exception ex) {
-		    logger.error("Kafka failed for PNR {}: {}", pnr, ex.getMessage());
-		}
-		return ResponseEntity.ok(pnr);
-	}
+    @CircuitBreaker(name = "passengerService", fallbackMethod = "getTicketsByEmailFallback")
+    public ResponseEntity<List<TicketResponse>> getTicketsByEmailService(String email) {
 
-	@CircuitBreaker(name = "flightService", fallbackMethod = "getByPnrFallback")
-	public ResponseEntity<TicketResponse> getByPnrService(String pnr) {
+        Integer passengerId = passengerInterface.getIdByEmail(email).getBody();
+        if (passengerId == null) {
+            return ResponseEntity.notFound().build();
+        }
 
-		Ticket ticket = ticketRepository.findByPnr(pnr)
-				.orElseThrow(() -> new ResourceNotFoundException("No ticket with this PNR"));
+        List<Ticket> tickets = ticketRepository.findAllByPassengerId(passengerId);
 
-		// avoid NPE from Feign response
-		ResponseEntity<PassengerDetailsResponse> passengerResp = passengerInterface
-				.getPassengerDetails(ticket.getPassengerId());
-		if (passengerResp == null || passengerResp.getBody() == null) {
-			throw new ResourceNotFoundException("Passenger details unavailable");
-		}
-		PassengerDetailsResponse passenger = passengerResp.getBody();
+        List<TicketResponse> responses = tickets.stream().map(ticket -> {
 
-		ResponseEntity<FlightResponse> flightResp = flightInterface.getByID(ticket.getFlightId());
-		if (flightResp == null || flightResp.getBody() == null) {
-			throw new ResourceNotFoundException("Flight details unavailable");
-		}
-		FlightResponse flight = flightResp.getBody();
+            FlightResponse flight =
+                    flightInterface.getByID(ticket.getFlightId()).getBody();
 
-		TicketResponse res = TicketResponse.builder().name(passenger.getName()).email(passenger.getEmail())
-				.origin(flight.getOrigin()).destination(flight.getDestination()).pnr(ticket.getPnr())
-				.arrivalTime(flight.getArrivalTime()).departureTime(flight.getDepartureTime())
-				.numberOfSeats(ticket.getNumberOfSeats()).id(ticket.getTicketId()).booked(ticket.isBooked()).build();
+            if (flight == null) {
+                throw new ResourceNotFoundException("Flight details unavailable");
+            }
 
-		return ResponseEntity.ok(res);
-	}
+            List<PassengerDetailsResponse> passengers =
+                    fetchPassengers(ticket.getPassengerIds());
 
-	public ResponseEntity<TicketResponse> getByPnrFallback(String pnr, Throwable ex) {
-		logger.warn("Fallback for getByPnrService for PNR {}: {}", pnr, ex.getMessage());
-		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(null);
-	}
+            return buildResponse(ticket, flight, passengers);
 
-	@CircuitBreaker(name = "passengerService", fallbackMethod = "getTicketsByEmailFallback")
-	public ResponseEntity<List<TicketResponse>> getTicketsByEmailService(String email) {
+        }).toList();
 
-		ResponseEntity<Integer> idResp = passengerInterface.getIdByEmail(email);
-		Integer passengerId = (idResp != null) ? idResp.getBody() : null;
+        return ResponseEntity.ok(responses);
+    }
 
-		if (passengerId == null)
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(List.of());
+    public ResponseEntity<List<TicketResponse>> getTicketsByEmailFallback(
+            String email, Throwable ex) {
 
-		// safety check
-		ResponseEntity<PassengerDetailsResponse> passengerResp = passengerInterface.getPassengerDetails(passengerId);
-		if (passengerResp == null || passengerResp.getBody() == null) {
-			throw new ResourceNotFoundException("Passenger details unavailable");
-		}
-		PassengerDetailsResponse passenger = passengerResp.getBody();
+        logger.warn("getTicketsByEmail fallback | email={} | {}", email, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+    }
 
-		List<Ticket> tickets = ticketRepository.findAllByPassengerId(passengerId);
+    private List<PassengerDetailsResponse> fetchPassengers(List<Integer> passengerIds) {
 
-		List<TicketResponse> responseList = tickets.stream().map(ticket -> {
+        List<PassengerDetailsResponse> passengers = new ArrayList<>();
 
-			// safety check
-			ResponseEntity<FlightResponse> fResp = flightInterface.getByID(ticket.getFlightId());
-			if (fResp == null || fResp.getBody() == null) {
-				throw new ResourceNotFoundException("Flight details unavailable");
-			}
-			FlightResponse flight = fResp.getBody();
+        for (Integer pid : passengerIds) {
+            PassengerDetailsResponse passenger =
+                    passengerInterface.getPassengerDetails(pid).getBody();
 
-			return TicketResponse.builder().name(passenger.getName()).email(passenger.getEmail())
-					.origin(flight.getOrigin()).destination(flight.getDestination()).pnr(ticket.getPnr())
-					.arrivalTime(flight.getArrivalTime()).departureTime(flight.getDepartureTime())
-					.numberOfSeats(ticket.getNumberOfSeats()).id(ticket.getTicketId()).booked(ticket.isBooked()).build();
+            if (passenger == null) {
+                throw new ResourceNotFoundException("Passenger not found: " + pid);
+            }
+            passengers.add(passenger);
+        }
+        return passengers;
+    }
 
-		}).toList();
+    private TicketResponse buildResponse(
+            Ticket ticket,
+            FlightResponse flight,
+            List<PassengerDetailsResponse> passengers) {
 
-		return ResponseEntity.ok(responseList);
-	}
+        return TicketResponse.builder()
+                .id(ticket.getTicketId())
+                .pnr(ticket.getPnr())
+                .origin(flight.getOrigin())
+                .destination(flight.getDestination())
+                .departureTime(flight.getDepartureTime())
+                .arrivalTime(flight.getArrivalTime())
+                .numberOfSeats(ticket.getNumberOfSeats())
+                .booked(ticket.isBooked())
+                .passengers(passengers)
+                .build();
+    }
 
-	public ResponseEntity<List<TicketResponse>> getTicketsByEmailFallback(String email, Throwable ex) {
-		logger.warn("Fallback for getTicketsByEmailService for email {}: {}", email, ex.getMessage());
-		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(List.of());
-	}
+    private void sendKafkaNotifications(Ticket ticket) {
+
+        for (Integer pid : ticket.getPassengerIds()) {
+            try {
+                PassengerDetailsResponse passenger =
+                        passengerInterface.getPassengerDetails(pid).getBody();
+
+                if (passenger == null) continue;
+
+                TicketBookedEvent event = new TicketBookedEvent(
+                        passenger.getEmail(),
+                        ticket.getPnr(),
+                        ticket.getFlightId(),
+                        ticket.getNumberOfSeats()
+                );
+
+                kafkaTemplate.send("ticket-confirmation", event);
+
+            } catch (Exception ex) {
+                logger.error("Kafka failure | pid={} | {}", pid, ex.getMessage());
+            }
+        }
+    }
 }

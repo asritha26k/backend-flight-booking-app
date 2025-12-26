@@ -1,5 +1,6 @@
 package com.example.request;
 
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,12 +13,11 @@ import java.util.List;
 @AllArgsConstructor
 
 public class BookTicketRequest {
-	@NotNull
-	private int flightId;
-	@NotNull
-	private Integer [] passengerIds;
-//	@NotNull
-//	private String seatNo;
-	@NotNull
-	private int numberOfSeats;
+
+    @NotNull
+    private Integer flightId;
+
+    @NotEmpty
+    private List<Integer> passengerIds;
+
 }

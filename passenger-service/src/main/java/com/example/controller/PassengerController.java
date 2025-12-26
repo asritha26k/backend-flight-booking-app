@@ -33,6 +33,12 @@ public class PassengerController {
 		System.out.println("PASSENGER SERVICE RECEIVED TOKEN = " + auth);
 		return auth;
 	}
+    @PostMapping("/create-or-get")
+    public ResponseEntity<Integer> createOrGetPassenger(
+            @RequestBody PassengerDetailsRequest req) {
+
+        return passengerService.createOrGetPassengerService(req);
+    }
 
 	// get request by id
 	@GetMapping("getByPassengerId/{id}")

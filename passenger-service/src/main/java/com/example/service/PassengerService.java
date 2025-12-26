@@ -30,8 +30,32 @@ public class PassengerService {
 		return new ResponseEntity<>(passengerDetails, HttpStatus.OK);
 
 	}
+    public ResponseEntity<Integer> createOrGetPassengerService(PassengerDetailsRequest req) {
 
-	public ResponseEntity<Integer> registerPassengerService(PassengerDetailsRequest req) {
+        Passenger passenger = passengerRepository.findByEmail(req.getEmail())
+                .orElseGet(() -> {
+
+                    Address address = Address.builder()
+                            .city(req.getCity())
+                            .state(req.getState())
+                            .houseNo(req.getHouseNo())
+                            .build();
+
+                    Passenger newPassenger = Passenger.builder()
+                            .email(req.getEmail())
+                            .name(req.getName())
+                            .phoneNumber(req.getPhoneNumber())
+                            .address(address)
+                            .build();
+
+                    return passengerRepository.save(newPassenger);
+                });
+
+        return ResponseEntity.ok(passenger.getPassengerId());
+    }
+
+
+    public ResponseEntity<Integer> registerPassengerService(PassengerDetailsRequest req) {
 		Address address = Address.builder().city(req.getCity()).state(req.getState()).houseNo(req.getHouseNo()).build();
 
 		Passenger passenger = Passenger.builder().email(req.getEmail()).name(req.getName())

@@ -1,6 +1,7 @@
 package com.example.response;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,16 +13,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TicketResponse {
-	private int id;
-	private String name;
-	private String email;
-	private String origin;
-	private String destination;
-	private String pnr;
 
-	private int numberOfSeats;
+    private Integer id;
+    private String pnr;
 
-	private LocalDateTime departureTime;
-	private LocalDateTime arrivalTime;
-	private boolean booked;
+    private String origin;
+    private String destination;
+
+    private LocalDateTime departureTime;
+    private LocalDateTime arrivalTime;
+
+    private int numberOfSeats;
+    private boolean booked;
+
+    private List<PassengerDetailsResponse> passengers;
 }
