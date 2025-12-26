@@ -1,19 +1,11 @@
 package com.example.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Entity
 @Table(name = "tickets")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class Ticket {
 
     @Id
@@ -39,4 +31,44 @@ public class Ticket {
 
     @Column(nullable = false)
     private boolean booked;
+
+    public Ticket() {}
+
+    public Ticket(Integer ticketId, String pnr, Integer flightId, List<Integer> passengerIds,
+                  int numberOfSeats, boolean booked) {
+        this.ticketId = ticketId;
+        this.pnr = pnr;
+        this.flightId = flightId;
+        this.passengerIds = passengerIds;
+        this.numberOfSeats = numberOfSeats;
+        this.booked = booked;
+    }
+
+    public Integer getTicketId() { return ticketId; }
+    public String getPnr() { return pnr; }
+    public Integer getFlightId() { return flightId; }
+    public List<Integer> getPassengerIds() { return passengerIds; }
+    public int getNumberOfSeats() { return numberOfSeats; }
+    public boolean isBooked() { return booked; }
+    public void setBooked(boolean booked) { this.booked = booked; }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static class Builder {
+        private String pnr;
+        private Integer flightId;
+        private List<Integer> passengerIds;
+        private int numberOfSeats;
+        private boolean booked;
+
+        public Builder pnr(String pnr) { this.pnr = pnr; return this; }
+        public Builder flightId(Integer flightId) { this.flightId = flightId; return this; }
+        public Builder passengerIds(List<Integer> passengerIds) { this.passengerIds = passengerIds; return this; }
+        public Builder numberOfSeats(int numberOfSeats) { this.numberOfSeats = numberOfSeats; return this; }
+        public Builder booked(boolean booked) { this.booked = booked; return this; }
+
+        public Ticket build() {
+            return new Ticket(null, pnr, flightId, passengerIds, numberOfSeats, booked);
+        }
+    }
 }

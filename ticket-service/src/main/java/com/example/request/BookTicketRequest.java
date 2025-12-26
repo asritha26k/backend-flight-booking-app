@@ -2,15 +2,7 @@ package com.example.request;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import java.util.List;
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 
 public class BookTicketRequest {
 
@@ -20,4 +12,13 @@ public class BookTicketRequest {
     @NotEmpty
     private List<Integer> passengerIds;
 
+    public BookTicketRequest() {}
+
+    public BookTicketRequest(Integer flightId, List<Integer> passengerIds) {
+        this.flightId = flightId;
+        this.passengerIds = passengerIds;
+    }
+
+    public Integer getFlightId() { return flightId; }
+    public List<Integer> getPassengerIds() { return passengerIds; }
 }

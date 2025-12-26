@@ -49,6 +49,7 @@ public class TicketService {
     }
 
     @Transactional
+    @SuppressWarnings("null")
     public ResponseEntity<String> bookTicketService(BookTicketRequest req) {
 
         if (req.getPassengerIds() == null || req.getPassengerIds().isEmpty()) {
@@ -211,7 +212,7 @@ public class TicketService {
 
                 kafkaTemplate.send("ticket-confirmation", event);
 
-            } catch (Exception ex) {
+            } catch (feign.FeignException | org.springframework.kafka.KafkaException ex) {
                 logger.error("Kafka failure | pid={} | {}", pid, ex.getMessage());
             }
         }
