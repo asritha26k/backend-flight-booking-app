@@ -20,5 +20,13 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
         WHERE :pid MEMBER OF t.passengerIds
     """)
     List<Ticket> findAllByPassengerId(@Param("pid") Integer passengerId);
+
+    @Query("""
+        SELECT seat
+        FROM Ticket t
+        JOIN t.seatNumbers seat
+        WHERE t.flightId = :flightId AND t.booked = true
+    """)
+    List<String> findBookedSeatNumbers(@Param("flightId") Integer flightId);
 }
 

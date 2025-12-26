@@ -3,6 +3,7 @@ package com.example.response;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@SuppressWarnings("java:S107")
 public class TicketResponse {
 
     private Integer id;
@@ -14,6 +15,7 @@ public class TicketResponse {
     private LocalDateTime departureTime;
     private LocalDateTime arrivalTime;
 
+    private List<String> seatNumbers;
     private int numberOfSeats;
     private boolean booked;
 
@@ -23,7 +25,7 @@ public class TicketResponse {
 
     public TicketResponse(Integer id, String pnr, String origin, String destination,
                           LocalDateTime departureTime, LocalDateTime arrivalTime,
-                          int numberOfSeats, boolean booked,
+                          List<String> seatNumbers, int numberOfSeats, boolean booked,
                           List<PassengerDetailsResponse> passengers) {
         this.id = id;
         this.pnr = pnr;
@@ -31,6 +33,7 @@ public class TicketResponse {
         this.destination = destination;
         this.departureTime = departureTime;
         this.arrivalTime = arrivalTime;
+        this.seatNumbers = seatNumbers;
         this.numberOfSeats = numberOfSeats;
         this.booked = booked;
         this.passengers = passengers;
@@ -42,6 +45,7 @@ public class TicketResponse {
     public String getDestination() { return destination; }
     public LocalDateTime getDepartureTime() { return departureTime; }
     public LocalDateTime getArrivalTime() { return arrivalTime; }
+    public List<String> getSeatNumbers() { return seatNumbers; }
     public int getNumberOfSeats() { return numberOfSeats; }
     public boolean isBooked() { return booked; }
     public List<PassengerDetailsResponse> getPassengers() { return passengers; }
@@ -55,6 +59,7 @@ public class TicketResponse {
         private String destination;
         private LocalDateTime departureTime;
         private LocalDateTime arrivalTime;
+        private List<String> seatNumbers;
         private int numberOfSeats;
         private boolean booked;
         private List<PassengerDetailsResponse> passengers;
@@ -65,13 +70,14 @@ public class TicketResponse {
         public Builder destination(String destination) { this.destination = destination; return this; }
         public Builder departureTime(LocalDateTime departureTime) { this.departureTime = departureTime; return this; }
         public Builder arrivalTime(LocalDateTime arrivalTime) { this.arrivalTime = arrivalTime; return this; }
+        public Builder seatNumbers(List<String> seatNumbers) { this.seatNumbers = seatNumbers; return this; }
         public Builder numberOfSeats(int seats) { this.numberOfSeats = seats; return this; }
         public Builder booked(boolean booked) { this.booked = booked; return this; }
         public Builder passengers(List<PassengerDetailsResponse> passengers) { this.passengers = passengers; return this; }
 
         public TicketResponse build() {
             return new TicketResponse(id, pnr, origin, destination, departureTime, arrivalTime,
-                                      numberOfSeats, booked, passengers);
+                                      seatNumbers, numberOfSeats, booked, passengers);
         }
     }
 }

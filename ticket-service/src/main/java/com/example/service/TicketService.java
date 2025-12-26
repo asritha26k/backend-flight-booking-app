@@ -2,8 +2,11 @@ package com.example.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +25,7 @@ import com.example.repository.TicketRepository;
 import com.example.request.BookTicketRequest;
 import com.example.response.FlightResponse;
 import com.example.response.PassengerDetailsResponse;
+import com.example.response.SeatMapResponse;
 import com.example.response.TicketResponse;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -56,6 +60,41 @@ public class TicketService {
             throw new IllegalArgumentException("Passenger list cannot be empty");
         }
 
+        if (req.getSeatNumbers() == null || req.getSeatNumbers().isEmpty()) {
+            throw new IllegalArgumentException("Please select at least one seat");
+        }
+
+        if (req.getPassengerIds().size() != req.getSeatNumbers().size()) {
+            throw new IllegalArgumentException("Passengers and seats count must match");
+        }
+
+        List<String> normalizedSeats = normalizeSeats(req.getSeatNumbers());
+
+        FlightResponse flight = flightInterface.getByID(req.getFlightId()).getBody();
+
+        if (flight == null) {
+            throw new ResourceNotFoundException("Flight not found");
+        }
+
+        validateSeatNumbers(normalizedSeats, flight.getTotalSeats());
+
+        if (flight.getAvailableSeats() < normalizedSeats.size()) {
+            throw new IllegalArgumentException("Not enough seats available");
+        }
+
+        List<String> alreadyBooked = ticketRepository.findBookedSeatNumbers(req.getFlightId())
+                .stream()
+                .map(this::normalizeSeat)
+                .toList();
+
+        Set<String> conflicts = normalizedSeats.stream()
+                .filter(alreadyBooked::contains)
+                .collect(Collectors.toSet());
+
+        if (!conflicts.isEmpty()) {
+            throw new IllegalArgumentException("Seats already booked: " + String.join(", ", conflicts));
+        }
+
         int seats = req.getPassengerIds().size();
         flightInterface.reserveSeats(req.getFlightId(), seats);
 
@@ -64,6 +103,7 @@ public class TicketService {
         Ticket ticket = Ticket.builder()
                 .pnr(pnr)
                 .flightId(req.getFlightId())
+                .seatNumbers(normalizedSeats)
                 .passengerIds(req.getPassengerIds())
                 .numberOfSeats(seats)
                 .booked(true)
@@ -188,6 +228,7 @@ public class TicketService {
                 .destination(flight.getDestination())
                 .departureTime(flight.getDepartureTime())
                 .arrivalTime(flight.getArrivalTime())
+                .seatNumbers(ticket.getSeatNumbers())
                 .numberOfSeats(ticket.getNumberOfSeats())
                 .booked(ticket.isBooked())
                 .passengers(passengers)
@@ -214,6 +255,63 @@ public class TicketService {
 
             } catch (feign.FeignException | org.springframework.kafka.KafkaException ex) {
                 logger.error("Kafka failure | pid={} | {}", pid, ex.getMessage());
+            }
+        }
+    }
+
+    public ResponseEntity<SeatMapResponse> getSeatMap(int flightId) {
+
+        FlightResponse flight = flightInterface.getByID(flightId).getBody();
+
+        if (flight == null) {
+            throw new ResourceNotFoundException("Flight not found");
+        }
+
+        List<String> bookedSeats = ticketRepository.findBookedSeatNumbers(flightId)
+                .stream()
+                .map(this::normalizeSeat)
+                .toList();
+
+        SeatMapResponse response = new SeatMapResponse(
+                flightId,
+                flight.getTotalSeats(),
+                flight.getAvailableSeats(),
+                bookedSeats
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    private List<String> normalizeSeats(List<String> seatNumbers) {
+        return seatNumbers.stream()
+                .map(this::normalizeSeat)
+                .toList();
+    }
+
+    private String normalizeSeat(String seat) {
+        if (seat == null) {
+            throw new IllegalArgumentException("Seat number cannot be null");
+        }
+        return seat.trim().toUpperCase();
+    }
+
+    private void validateSeatNumbers(List<String> seatNumbers, int totalSeats) {
+
+        Set<String> unique = new HashSet<>(seatNumbers);
+
+        if (unique.size() != seatNumbers.size()) {
+            throw new IllegalArgumentException("Duplicate seat numbers are not allowed");
+        }
+
+        for (String seat : seatNumbers) {
+            try {
+                int seatNumber = Integer.parseInt(seat);
+                if (seatNumber < 1 || seatNumber > totalSeats) {
+                    throw new IllegalArgumentException(
+                            "Seat number " + seat + " is out of range (1-" + totalSeats + ")");
+                }
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Seat numbers must be numeric");
             }
         }
     }

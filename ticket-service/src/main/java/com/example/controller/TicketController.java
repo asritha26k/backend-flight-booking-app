@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.exception.ResourceNotFoundException;
 import com.example.request.BookTicketRequest;
+import com.example.response.SeatMapResponse;
 import com.example.response.TicketResponse;
 import com.example.service.TicketService;
 
@@ -25,6 +26,7 @@ public class TicketController {
 
 	private final TicketService ticketService;
 
+	@SuppressWarnings("unused")
 	TicketController(@Autowired TicketService ticketService) {
 		this.ticketService = ticketService;
 	}
@@ -50,5 +52,10 @@ public class TicketController {
 	public ResponseEntity<List<TicketResponse>> getTicketsByEmail(@PathVariable String email)
 			throws ResourceNotFoundException {
 		return ticketService.getTicketsByEmailService(email);
+	}
+
+	@GetMapping("seat-map/{flightId}")
+	public ResponseEntity<SeatMapResponse> getSeatMap(@PathVariable int flightId) {
+		return ticketService.getSeatMap(flightId);
 	}
 }

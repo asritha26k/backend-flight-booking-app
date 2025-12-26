@@ -26,10 +26,10 @@ public class FlightService {
     @Transactional
     public void reserveSeats(int flightId, int seats) {
         Flight flight = flightRepository.findById(flightId)
-                .orElseThrow(() -> new RuntimeException("Flight not found"));
+                .orElseThrow(() -> new IllegalStateException("Flight not found"));
 
         if (flight.getAvailableSeats() < seats) {
-            throw new RuntimeException("Not enough seats available");
+            throw new IllegalStateException("Not enough seats available");
         }
 
         flight.setAvailableSeats(flight.getAvailableSeats() - seats);
@@ -39,24 +39,22 @@ public class FlightService {
     @Transactional
     public void releaseSeats(int flightId, int seats) {
         Flight flight = flightRepository.findById(flightId)
-                .orElseThrow(() -> new RuntimeException("Flight not found"));
+                .orElseThrow(() -> new IllegalStateException("Flight not found"));
 
         flight.setAvailableSeats(flight.getAvailableSeats() + seats);
         flightRepository.save(flight);
     }
 
     public ResponseEntity<Integer> registerFlightByIDService(FlightRequest req) {
-
-        Flight flight = Flight.builder()
-                .airline(req.getAirline())
-                .origin(req.getOrigin())
-                .destination(req.getDestination())
-                .price(req.getPrice())
-                .departureTime(req.getDepartureTime())
-                .arrivalTime(req.getArrivalTime())
-                .totalSeats(req.getTotalSeats())
-                .availableSeats(req.getTotalSeats()) 
-                .build();
+        Flight flight = new Flight();
+        flight.setAirline(req.getAirline());
+        flight.setOrigin(req.getOrigin());
+        flight.setDestination(req.getDestination());
+        flight.setPrice(req.getPrice());
+        flight.setDepartureTime(req.getDepartureTime());
+        flight.setArrivalTime(req.getArrivalTime());
+        flight.setTotalSeats(req.getTotalSeats());
+        flight.setAvailableSeats(req.getTotalSeats());
 
         Flight savedFlight = flightRepository.save(flight);
         return new ResponseEntity<>(savedFlight.getFlightId(), HttpStatus.CREATED);

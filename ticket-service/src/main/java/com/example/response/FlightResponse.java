@@ -2,6 +2,7 @@ package com.example.response;
 
 import java.time.LocalDateTime;
 
+@SuppressWarnings("java:S107")
 public class FlightResponse {
 	private int flightId;
 	private Airline airline;
@@ -10,11 +11,14 @@ public class FlightResponse {
 	private double price;
 	private LocalDateTime departureTime;
 	private LocalDateTime arrivalTime;
+	private int totalSeats;
+	private int availableSeats;
 
 	public FlightResponse() {}
 
 	public FlightResponse(int flightId, Airline airline, String origin, String destination,
-						  double price, LocalDateTime departureTime, LocalDateTime arrivalTime) {
+					  double price, LocalDateTime departureTime, LocalDateTime arrivalTime,
+					  int totalSeats, int availableSeats) {
 		this.flightId = flightId;
 		this.airline = airline;
 		this.origin = origin;
@@ -22,6 +26,8 @@ public class FlightResponse {
 		this.price = price;
 		this.departureTime = departureTime;
 		this.arrivalTime = arrivalTime;
+		this.totalSeats = totalSeats;
+		this.availableSeats = availableSeats;
 	}
 
 	public int getFlightId() { return flightId; }
@@ -31,4 +37,6 @@ public class FlightResponse {
 	public double getPrice() { return price; }
 	public LocalDateTime getDepartureTime() { return departureTime; }
 	public LocalDateTime getArrivalTime() { return arrivalTime; }
+	public int getTotalSeats() { return totalSeats; }
+	public int getAvailableSeats() { return availableSeats; }
 }
