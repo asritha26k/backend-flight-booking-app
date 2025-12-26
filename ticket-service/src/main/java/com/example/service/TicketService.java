@@ -143,6 +143,7 @@ public class TicketService {
         return ResponseEntity.ok("Ticket cancelled successfully");
     }
 
+    @Transactional(readOnly = true)
     @CircuitBreaker(name = "flightService", fallbackMethod = "getByPnrFallback")
     public ResponseEntity<TicketResponse> getByPnrService(String pnr) {
 
@@ -164,6 +165,7 @@ public class TicketService {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
+    @Transactional(readOnly = true)
     @CircuitBreaker(name = "passengerService", fallbackMethod = "getTicketsByEmailFallback")
     public ResponseEntity<List<TicketResponse>> getTicketsByEmailService(String email) {
 
@@ -228,7 +230,7 @@ public class TicketService {
                 .destination(flight.getDestination())
                 .departureTime(flight.getDepartureTime())
                 .arrivalTime(flight.getArrivalTime())
-                .seatNumbers(ticket.getSeatNumbers())
+                .seatNumbers(ticket.getSeatNumbers() == null ? List.of() : ticket.getSeatNumbers())
                 .numberOfSeats(ticket.getNumberOfSeats())
                 .booked(ticket.isBooked())
                 .passengers(passengers)

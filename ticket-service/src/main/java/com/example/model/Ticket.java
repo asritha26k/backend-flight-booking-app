@@ -6,6 +6,7 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -26,13 +27,13 @@ public class Ticket {
     @Column(nullable = false)
     private Integer flightId;
 
-        @ElementCollection
+            @ElementCollection(fetch = FetchType.EAGER)
         @CollectionTable(
             name = "ticket_seats",
             joinColumns = @JoinColumn(name = "ticket_id")
         )
         @Column(name = "seat_number")
-        private List<String> seatNumbers;
+            private List<String> seatNumbers = new java.util.ArrayList<>();
 
     @ElementCollection
     @CollectionTable(
@@ -55,7 +56,7 @@ public class Ticket {
         this.ticketId = ticketId;
         this.pnr = pnr;
         this.flightId = flightId;
-        this.seatNumbers = seatNumbers;
+        this.seatNumbers = seatNumbers == null ? new java.util.ArrayList<>() : seatNumbers;
         this.passengerIds = passengerIds;
         this.numberOfSeats = numberOfSeats;
         this.booked = booked;
@@ -88,7 +89,9 @@ public class Ticket {
         public Builder booked(boolean booked) { this.booked = booked; return this; }
 
         public Ticket build() {
-            return new Ticket(null, pnr, flightId, seatNumbers, passengerIds, numberOfSeats, booked);
+            return new Ticket(null, pnr, flightId,
+                    seatNumbers == null ? new java.util.ArrayList<>() : seatNumbers,
+                    passengerIds, numberOfSeats, booked);
         }
     }
 }
