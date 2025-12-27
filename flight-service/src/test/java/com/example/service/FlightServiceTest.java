@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -33,13 +34,29 @@ class FlightServiceTest {
 	private FlightService flightService;
 
 	private Flight createFlight() {
-		return Flight.builder().flightId(1).airline(Airline.INDIGO).origin("DEL").destination("HYD").price(5000)
-				.arrivalTime(LocalDateTime.now().plusDays(2)).departureTime(LocalDateTime.now().plusDays(1)).build();
+		Flight flight = new Flight();
+		flight.setFlightId(1);
+		flight.setAirline(Airline.INDIGO);
+		flight.setOrigin("DEL");
+		flight.setDestination("HYD");
+		flight.setPrice(5000);
+		flight.setDepartureTime(LocalDateTime.now().plusDays(1));
+		flight.setArrivalTime(LocalDateTime.now().plusDays(2));
+		flight.setTotalSeats(100);
+		flight.setAvailableSeats(100);
+		return flight;
 	}
 
 	private FlightRequest createRequest() {
-		return FlightRequest.builder().airline(Airline.INDIGO).origin("DEL").destination("HYD").price(5000)
-				.departureTime(LocalDateTime.now().plusDays(1)).arrivalTime(LocalDateTime.now().plusDays(2)).build();
+		FlightRequest req = new FlightRequest();
+		req.setAirline(Airline.INDIGO);
+		req.setOrigin("DEL");
+		req.setDestination("HYD");
+		req.setPrice(5000);
+		req.setDepartureTime(LocalDateTime.now().plusDays(1));
+		req.setArrivalTime(LocalDateTime.now().plusDays(2));
+		req.setTotalSeats(100);
+		return req;
 	}
 
 	@Test
@@ -73,9 +90,34 @@ class FlightServiceTest {
 		});
 	}
 
+	@Test
+	void testGetAllFlights() {
+		Flight flight1 = createFlight();
+		Flight flight2 = createFlight();
+		flight2.setFlightId(2);
 
+		when(flightRepository.findAll()).thenReturn(Arrays.asList(flight1, flight2));
+
+		List<Flight> flights = flightService.getAllFlights();
+		assertEquals(2, flights.size());
+		assertEquals(flight1.getFlightId(), flights.get(0).getFlightId());
+		assertEquals(flight2.getFlightId(), flights.get(1).getFlightId());
+	}
 
 	@Test
+	void testGetByOriginAndDestination() {
+		Flight flight = createFlight();
+		SearchRequest req = new SearchRequest();
+		req.setOrigin("DEL");
+		req.setDestination("HYD");
+
+		when(flightRepository.findByOriginAndDestination("DEL", "HYD")).thenReturn(Arrays.asList(flight));
+
+		var response = flightService.getByOriginAndDestinationService(req);
+		assertEquals(200, response.getStatusCode().value());
+		assertEquals(1, response.getBody().size());
+		assertEquals("DEL", response.getBody().get(0).getOrigin());
+	}
 	void testDelete_Success() throws Exception {
 		Flight flight = createFlight();
 
